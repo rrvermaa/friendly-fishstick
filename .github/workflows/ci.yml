@@ -1,0 +1,84 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  backend:
+    name: Backend Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: src/api/core_service/requirements*.txt
+
+      - name: Install backend dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r src/api/core_service/requirements-dev.txt
+
+      - name: Ruff format check
+        run: ruff format --check src/api/core_service tests/api/core_service
+
+      - name: Ruff lint
+        run: ruff check src/api/core_service tests/api/core_service
+
+      - name: MyPy type checking
+        run: mypy --config-file src/api/core_service/pyproject.toml src/api/core_service
+
+      - name: Dependency consistency check
+        run: pip check
+
+      - name: Backend tests
+        env:
+          PYTHONPATH: src/api/core_service
+        run: pytest -q tests/api/core_service
+
+  frontend:
+    name: Frontend Quality
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: src/ui/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/ui
+        run: npm ci
+
+      - name: Prettier format check
+        working-directory: src/ui
+        run: npm run format:check
+
+      - name: ESLint
+        working-directory: src/ui
+        run: npm run lint
+
+      - name: Type checking
+        working-directory: src/ui
+        run: npm run type-check
+
+      - name: Frontend build
+        working-directory: src/ui
+        run: npm run build
+
+      - name: Dependency tree check
+        working-directory: src/ui
+        run: npm run dep-check
